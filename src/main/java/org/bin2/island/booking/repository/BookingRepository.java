@@ -55,10 +55,10 @@ public class BookingRepository {
                 .map(c -> booking);
     }
 
-    public Maybe<Booking> createBookingInfo(SqlClient client, Booking booking) {
+    public Single<Booking> createBookingInfo(SqlClient client, Booking booking) {
         return client.preparedQuery("INSERT INTO \"BOOKING\"( \"id\", \"email\", \"firstname\", \"lastname\") VALUES ($1, $2, $3, $4)")
                 .rxExecute(Tuple.of(booking.getId(), booking.getEmail(), booking.getFirstName(), booking.getLastName()))
                 .filter(rowSet -> rowSet.rowCount() > 0)
-                .map(c -> booking);
+                .map(c -> booking).toSingle();
     }
 }

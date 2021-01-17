@@ -5,6 +5,7 @@ import io.reactivex.SingleSource;
 import org.bin2.island.booking.model.Booking;
 import org.bin2.island.booking.service.BookingService;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -25,7 +26,7 @@ public class BookingRestApi {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/available")
-    public Single<Response> getAvailableDates(@QueryParam("from") String fromAsString, @QueryParam("to") String toAsString) {
+    public Single<Response> getAvailableDates(@Nullable  @QueryParam("from") String fromAsString,@Nullable  @QueryParam("to") String toAsString) {
         final LocalDate from;
         final LocalDate to;
         try {
@@ -46,7 +47,7 @@ public class BookingRestApi {
                             .build())
                     .build());
         }
-        LocalDate minDate = LocalDate.now();
+        LocalDate minDate = LocalDate.now().plus(1, ChronoUnit.DAYS);
         LocalDate maxDate = minDate.plus(1, ChronoUnit.MONTHS);
 
         if(from != null && (from.isBefore(minDate) || from.isAfter(maxDate) )) {
@@ -76,6 +77,21 @@ public class BookingRestApi {
                 .firstName(request.getBookingInfo().getFirstname())
                 .lastName(request.getBookingInfo().getLastname())
                 .build();
+        if (request.getStartDate().isBefore(LocalDate.now().plus(1, ChronoUnit.DAYS)) ||
+                request.getEndDate().isAfter(LocalDate.now().plus(1, ChronoUnit.MONTHS).plus(1, ChronoUnit.DAYS)) ) {
+            return Single.just(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ErrorsReponse.builder().error(Error.builder()
+                            .code("BAD_REQUEST")
+                            .message("should book at least one day before and maximum 1 month in advance")
+                            .build()).build()).build());
+        }
+        if (request.getStartDate().until(request.getEndDate(), ChronoUnit.DAYS)>3) {
+            return Single.just(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ErrorsReponse.builder().error(Error.builder()
+                            .code("BAD_REQUEST")
+                            .message("Cannot book more than 3 days")
+                            .build()).build()).build());
+        }
         return bookingService.tryToBook(booking, request.getStartDate(), request.getEndDate())
                 .map(b ->
                         Response.ok(b.getId()).build())
@@ -118,4 +134,12 @@ public class BookingRestApi {
                                 .build()).build())
                 .build());
     }
+
+    @GET
+    @Path("/cacheRefresh")
+    public Response cancelBooking() {
+        bookingService.refreshCache();
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
 }

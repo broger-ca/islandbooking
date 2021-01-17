@@ -35,6 +35,7 @@ dependencies {
     runtimeOnly("ch.qos.logback:logback-classic")
     implementation 'com.google.guava:guava:30.1-jre'
     testRuntimeOnly("org.testcontainers:postgresql")
+    implementation("io.micronaut.kafka:micronaut-kafka")
 
     runtimeOnly 'com.ongres.scram:common:2.1'
     runtimeOnly 'com.ongres.scram:client:2.1'
