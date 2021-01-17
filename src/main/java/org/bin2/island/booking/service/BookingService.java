@@ -11,6 +11,7 @@ import io.vertx.pgclient.PgException;
 import io.vertx.reactivex.pgclient.PgPool;
 import lombok.extern.slf4j.Slf4j;
 import org.bin2.island.booking.model.Booking;
+import org.bin2.island.booking.model.BookingAction;
 import org.bin2.island.booking.repository.BookingRepository;
 
 import javax.inject.Singleton;
@@ -63,7 +64,7 @@ public class BookingService {
         return client.rxBegin().flatMap(
                 tx -> bookingRepository.deleteBookingDates(tx, bookingId)
                         .flatMap(u ->bookingRepository.deleteBooking(tx, bookingId))
-                .flatMap(u -> tx.rxCommit().doOnComplete(()-> triggerBookingEvent(bookingId)).toSingleDefault(u)
+                .flatMap(u -> tx.rxCommit().doOnComplete(()-> triggerBookingEvent(bookingId, BookingAction.CANCEL)).toSingleDefault(u)
                 .onErrorResumeNext(e ->
                         tx.rxRollback().andThen(Single.error(e))
                 ))
@@ -103,7 +104,7 @@ public class BookingService {
                                             .flatMap(id -> bookingRepository.createBookingInfo(tx,
                                                     booking.toBuilder().id(id).build()))
                                             .flatMapMaybe(b -> tx.rxCommit()
-                                                    .doOnComplete(()-> triggerBookingEvent(bookingId))
+                                                    .doOnComplete(()-> triggerBookingEvent(bookingId, BookingAction.BOOK))
                                                     .toSingleDefault(b).toMaybe()))
                                             .onErrorResumeNext((Throwable t) -> {
                                                 if (isConstraintError(t)) {
@@ -116,10 +117,8 @@ public class BookingService {
                 });
     }
 
-    private void triggerBookingEvent(String bookingId) {
-        //bookingClient.sendEvent(bookingId);
-        // not needed if kafka properly setup
-        refreshCache();
+    private void triggerBookingEvent(String bookingId, BookingAction action) {
+        bookingClient.sendEvent(bookingId, action);
     }
 
     private boolean isConstraintError(Throwable t) {
