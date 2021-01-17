@@ -1,3 +1,26 @@
 micronaut:
+  server:
+    port: 8080
   application:
-    name: islandbooking
+    name: booking
+vertx:
+  pg:
+    client:
+      port: 5432
+      host: localhost
+      database: booking
+      user: booking
+      password: booking
+      maxSize: 5
+
+datasources:
+  default:
+    url: 'postgresql://localhost:5432/booking'
+    username: 'booking'
+    password: 'booking'
+    driverClassName: 'org.postgresql.Driver'
+flyway:
+  datasources:
+    default:
+      enabled: true
+      locations: classpath:db/migration

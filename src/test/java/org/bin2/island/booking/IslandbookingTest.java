@@ -1,4 +1,4 @@
-package com.example;
+package org.bin2.island.booking;
 
 import io.micronaut.runtime.EmbeddedApplication;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
