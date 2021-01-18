@@ -1,0 +1,125 @@
+{
+	"info": {
+		"_postman_id": "1c4e5579-92ab-4fdf-975e-e4010f0b01ef",
+		"name": "booking",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Date available",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/v1/booking/available?from=2021-01-16&to=2021-01-25",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"booking",
+						"available"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2021-01-16"
+						},
+						{
+							"key": "to",
+							"value": "2021-01-25"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Book Date",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"startDate\" : \"2021-01-16\",\r\n    \"endDate\" : \"2021-01-17\",\r\n\r\n    \"bookingInfo\" : {\r\n        \"email\" : \"benoit.roger@gmail.com\",\r\n        \"firstname\":\"benoit\",\r\n        \"lastname\": \"roger\"\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/v1/booking/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"booking",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update contact info",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n        \"email\" : \"benoit.roger2@gmail.com\",\r\n        \"firstname\":\"benoit2\",\r\n        \"lastname\": \"roger2\"\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/v1/booking/9288e9c0-44cf-4c11-a5bb-aa7333d06a24",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"booking",
+						"9288e9c0-44cf-4c11-a5bb-aa7333d06a24"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "cancel booking",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/v1/booking/9288e9c0-44cf-4c11-a5bb-aa7333d06a24",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"booking",
+						"9288e9c0-44cf-4c11-a5bb-aa7333d06a24"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
