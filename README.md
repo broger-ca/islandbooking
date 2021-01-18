@@ -3,7 +3,7 @@
 - Start kafka on localhost ( kafka url define in application.yaml)
 - ./gradlew run  
 
-### get avalaible date
+### get avalaible date (to excluded)
 GET http://localhost:8090/api/v1/booking/available?from=2021-01-18&to=2021-01-31
 
 from and to are optional query parameter

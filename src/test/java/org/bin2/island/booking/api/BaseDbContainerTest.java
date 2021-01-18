@@ -14,14 +14,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import io.micronaut.test.support.TestPropertyProvider;
 
-@MicronautTest
+@MicronautTest(propertySources = "test-application.yaml")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BaseDbContainerTest implements TestPropertyProvider {
     private PostgreSQLContainer container;
-    @AfterAll
-    public void teardown() {
-        container.stop();
-    }
+
 
     private void init() {
         if (container==null) {
