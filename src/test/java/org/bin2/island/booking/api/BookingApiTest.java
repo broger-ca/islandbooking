@@ -15,8 +15,10 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
+import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.http.uri.UriBuilder;
 import io.micronaut.runtime.server.EmbeddedServer;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
@@ -60,4 +62,13 @@ public class BookingApiTest extends BaseDbContainerTest {
         Assertions.assertEquals(expected ,dates);
     }
 
+    @Order(3)
+    @Test
+    public void testGetDateAvailableInValidDateRange() throws Exception {
+        LocalDate from = LocalDate.now();
+        LocalDate to = from.plus(10, ChronoUnit.DAYS);
+        URI uri = UriBuilder.of("/api/v1/booking/available").queryParam("from", from).queryParam("to", to).build();
+        var e = Assertions.assertThrows(HttpClientResponseException.class, ()-> client.toBlocking().retrieve(HttpRequest.GET(uri)));
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, e.getStatus());
+    }
 }
