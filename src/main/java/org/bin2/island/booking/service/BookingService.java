@@ -1,9 +1,7 @@
 package org.bin2.island.booking.service;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
-import io.micronaut.caffeine.cache.AsyncCache;
-import io.micronaut.caffeine.cache.Cache;
-import io.micronaut.caffeine.cache.Caffeine;
 import io.reactivex.Flowable;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
@@ -76,8 +74,9 @@ public class BookingService {
                 .flatMap(tx ->
                         this.bookingRepository.updateBookingInfo(tx, booking)
                         .flatMap(b ->
-                                tx.rxCommit().toSingleDefault(b).toMaybe())
-                                .onErrorResumeNext((Throwable t)-> tx.rxRollback().andThen(Maybe.error(t)))
+                                tx.rxCommit().toSingleDefault(b).toMaybe(),
+                                t ->  tx.rxRollback().onErrorComplete().andThen(Maybe.error(t)),
+                                () ->  tx.rxRollback().onErrorComplete().andThen(Maybe.empty()))
                         );
     }
 
@@ -89,9 +88,11 @@ public class BookingService {
      * @return
      */
     public Maybe<Booking> tryToBook(Booking booking, LocalDate startDate, LocalDate endDate) {
+        Preconditions.checkArgument(endDate.isAfter(startDate));
+
         final String bookingId = UUID.randomUUID().toString();
-        return client.rxBegin().toMaybe()
-                .flatMap(tx -> {
+        return client.rxBegin()
+                .flatMapMaybe(tx -> {
                     List<LocalDate> dates = startDate.datesUntil(endDate).collect(Collectors.toList());
                     //if there is a concurrent transaction inserting at the same time it will faire with a  PK_VIOLATION violation error
                     return this.bookingRepository.bookedDates(tx, startDate, endDate).toList()
@@ -99,22 +100,29 @@ public class BookingService {
                             .filter(l -> l.isEmpty())
                             .flatMap(l ->
                                     Flowable.fromIterable(dates)
+                                            // date should always be book in order to avoid db deadlock
                                             .flatMapSingle(d -> this.bookingRepository.bookDate(tx, d, bookingId).toSingle())
                                             .lastOrError()
                                             .flatMap(id -> bookingRepository.createBookingInfo(tx,
                                                     booking.toBuilder().id(id).build()))
-                                            .flatMapMaybe(b -> tx.rxCommit()
-                                                    .doOnComplete(()-> triggerBookingEvent(bookingId, BookingAction.BOOK))
-                                                    .toSingleDefault(b).toMaybe()))
-                                            .onErrorResumeNext((Throwable t) -> {
-                                                if (isConstraintError(t)) {
-                                                    // in this case the transaction has allready been rollback
-                                                    return Maybe.empty();
-                                                } else {
-                                                    return tx.rxRollback().andThen(Maybe.error(t));
-                                                }
-                                            });
+                                            .toMaybe()
+                                            ).flatMap(
+                                            b -> tx.rxCommit().doOnComplete(()-> triggerBookingEvent(bookingId, BookingAction.BOOK))
+                                                    .toSingleDefault(b).toMaybe(),
+                                    (Throwable t) -> bookHandleError(tx, t),
+                                            () -> tx.rxRollback().onErrorComplete().andThen(Maybe.empty()))
+                    ;
                 });
+    }
+
+    private Maybe<Booking> bookHandleError(io.vertx.reactivex.sqlclient.Transaction tx, Throwable t) {
+        if (t instanceof RuntimeException && "rollback exception".equals(t.getMessage())) {
+            //depending on the postgres version/ config either the transaction will fail to commit
+            // or there will be a constraint violation on insert
+            // in case of rollback exception we must not rollback manually
+            return Maybe.empty();
+        }
+        return tx.rxRollback().onErrorComplete().andThen(isConstraintError(t) ? Maybe.empty() : Maybe.error(t));
     }
 
     private void triggerBookingEvent(String bookingId, BookingAction action) {

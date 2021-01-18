@@ -17,7 +17,7 @@ import io.micronaut.test.support.TestPropertyProvider;
 @MicronautTest(propertySources = "test-application.yaml")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BaseDbContainerTest implements TestPropertyProvider {
-    private PostgreSQLContainer container;
+    private static PostgreSQLContainer container;
 
 
     private void init() {

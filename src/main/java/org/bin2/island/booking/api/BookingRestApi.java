@@ -50,6 +50,13 @@ public class BookingRestApi {
                             .build())
                     .build());
         }
+        if (from !=null && to!=null && !to.isAfter(from)) {
+            return Single.just(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ErrorsReponse.builder()
+                            .error(Error.builder().message("'to' should be after 'from'").build())
+                            .build())
+                    .build());
+        }
         LocalDate minDate = LocalDate.now().plus(1, ChronoUnit.DAYS);
         LocalDate maxDate = minDate.plus(1, ChronoUnit.MONTHS);
 
@@ -88,6 +95,14 @@ public class BookingRestApi {
                             .message("should book at least one day before and maximum 1 month in advance")
                             .build()).build()).build());
         }
+        if (!request.getEndDate().isAfter(request.getStartDate())) {
+            return Single.just(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ErrorsReponse.builder()
+                            .error(Error.builder().message("'endDate' should be after 'startDate'").build())
+                            .build())
+                    .build());
+        }
+
         if (request.getStartDate().until(request.getEndDate(), ChronoUnit.DAYS)>3) {
             return Single.just(Response.status(Response.Status.BAD_REQUEST)
                     .entity(ErrorsReponse.builder().error(Error.builder()

@@ -4,7 +4,11 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -19,9 +23,13 @@ import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
+import io.micronaut.http.exceptions.HttpException;
 import io.micronaut.http.uri.UriBuilder;
 import io.micronaut.runtime.server.EmbeddedServer;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import io.reactivex.Flowable;
+import io.reactivex.Scheduler;
+import io.reactivex.schedulers.Schedulers;
 
 public class BookingApiTest extends BaseDbContainerTest {
     @Inject
@@ -71,4 +79,78 @@ public class BookingApiTest extends BaseDbContainerTest {
         var e = Assertions.assertThrows(HttpClientResponseException.class, ()-> client.toBlocking().retrieve(HttpRequest.GET(uri)));
         Assertions.assertEquals(HttpStatus.BAD_REQUEST, e.getStatus());
     }
+
+    @Order(4)
+    @Test
+    public void testGetDateBookAndCancel() throws Exception {
+        LocalDate from = LocalDate.now().plus(3, ChronoUnit.DAYS);
+        LocalDate to = from.plus(2, ChronoUnit.DAYS);
+        // we check that the dates are available
+        checkThatDatesAreAvailable(from, to, 2);
+        // we do the booking
+        String bookingId = doBooking(from, to);
+        // we check that the dates are not available
+        checkThatDatesAreAvailable(from, to, 0);
+        // trying to rebook the date should make Conflict
+        HttpClientResponseException e = Assertions.assertThrows(HttpClientResponseException.class ,()->doBooking(from, to));
+        Assertions.assertEquals(HttpStatus.CONFLICT, e.getStatus());
+        // we do cancel the booking
+        cancelBooking(bookingId);
+        // we check that the dates are available
+        checkThatDatesAreAvailable(from, to, 2);
+    }
+
+    private void cancelBooking(String bookingId) {
+        URI uri = UriBuilder.of("/api/v1/booking/").path(bookingId).build();
+        client.toBlocking().exchange(HttpRequest.DELETE(uri.toString()));
+    }
+
+    private String doBooking(LocalDate from, LocalDate to) {
+        URI uri = UriBuilder.of("/api/v1/booking/").build();
+        BookingRequest request = BookingRequest.builder()
+                .startDate(from)
+                .endDate(to)
+                .bookingInfo(BookingInfo.builder()
+                        .email("testemail@.com")
+                        .firstname("firstname")
+                        .lastname("lastname")
+                        .build())
+                .build();
+        return client.toBlocking().retrieve(HttpRequest.POST(uri, request));
+    }
+
+    private void checkThatDatesAreAvailable(LocalDate from, LocalDate to, int nbDays) throws com.fasterxml.jackson.core.JsonProcessingException {
+        URI uri = UriBuilder.of("/api/v1/booking/available").queryParam("from", from).queryParam("to", to).build();
+        String response = client.toBlocking().retrieve(HttpRequest.GET(uri));
+        List<String> dates = new ObjectMapper().readValue(response, List.class);
+        Assertions.assertEquals(nbDays, dates.size());
+    }
+
+    @Test
+    @Order(5)
+    public void testConcurrentBooking() throws Exception {
+        LocalDate from = LocalDate.now().plus(6, ChronoUnit.DAYS);
+        LocalDate to = from.plus(2, ChronoUnit.DAYS);
+        // we check that the dates are available
+        checkThatDatesAreAvailable(from, to, 2);
+        int nbCalls = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(nbCalls);
+        var results = Flowable.range(0, nbCalls).parallel(nbCalls).runOn(Schedulers.from(executor))
+                .map(i -> {
+                    try {
+                        System.out.println(Thread.currentThread().getName());
+                        return doBooking(from, to);
+                    } catch (HttpClientResponseException e) {
+                        if (e.getStatus() == HttpStatus.CONFLICT) {
+                            return "conflict";
+                        }
+                        throw e;
+                    }
+                }).toSortedList(Comparator.naturalOrder()).blockingFirst();
+        executor.shutdown();
+        //        .map()
+        Assertions.assertEquals(nbCalls-1, results.stream().filter(s -> "conflict".equals(s)).count());
+        Assertions.assertEquals(1, results.stream().filter(s -> !"conflict".equals(s)).count());
+    }
+
 }
