@@ -6,12 +6,8 @@ micronaut:
 vertx:
   pg:
     client:
-      port: 5432
-      host: localhost
-      database: booking
-      user: booking
-      password: booking
       maxSize: 5
+      uri: postgresql://booking:booking@localhost:5432/booking
 jackson:
   serialization:
     writeDatesAsTimestamps: false
