@@ -12,19 +12,19 @@ import javax.ws.rs.core.Response;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Path("/api/v1/booking")
+@AllArgsConstructor
 public class BookingRestApi {
 
     private final BookingService bookingService;
-
-    public BookingRestApi(BookingService bookingService) {
-        this.bookingService = bookingService;
-    }
+    private final BookingRequestValidator bookingRequestValidator;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -82,34 +82,16 @@ public class BookingRestApi {
 
     @POST
     public Single<Response> bookDate(BookingRequest request) {
+        List<Error> errors = this.bookingRequestValidator.validateBookingRequest(request);
+        if (errors!=null&&!errors.isEmpty()) {
+            return Single.just(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ErrorsReponse.builder().errors(errors).build()).build());
+        }
         Booking booking = Booking.builder()
                 .email(request.getBookingInfo().getEmail())
                 .firstName(request.getBookingInfo().getFirstname())
                 .lastName(request.getBookingInfo().getLastname())
                 .build();
-        if (request.getStartDate().isBefore(LocalDate.now().plus(1, ChronoUnit.DAYS)) ||
-                request.getEndDate().isAfter(LocalDate.now().plus(1, ChronoUnit.MONTHS).plus(1, ChronoUnit.DAYS)) ) {
-            return Single.just(Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ErrorsReponse.builder().error(Error.builder()
-                            .code("BAD_REQUEST")
-                            .message("should book at least one day before and maximum 1 month in advance")
-                            .build()).build()).build());
-        }
-        if (!request.getEndDate().isAfter(request.getStartDate())) {
-            return Single.just(Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ErrorsReponse.builder()
-                            .error(Error.builder().message("'endDate' should be after 'startDate'").build())
-                            .build())
-                    .build());
-        }
-
-        if (request.getStartDate().until(request.getEndDate(), ChronoUnit.DAYS)>3) {
-            return Single.just(Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ErrorsReponse.builder().error(Error.builder()
-                            .code("BAD_REQUEST")
-                            .message("Cannot book more than 3 days")
-                            .build()).build()).build());
-        }
         return bookingService.tryToBook(booking, request.getStartDate(), request.getEndDate())
                 .map(b ->
                         Response.ok(b.getId()).build())
