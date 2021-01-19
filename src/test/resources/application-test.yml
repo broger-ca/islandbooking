@@ -1,6 +1,6 @@
 micronaut:
   server:
-    port: 8091
+    port: 8092
   application:
     name: booking
 
@@ -12,7 +12,3 @@ jackson:
   serialization:
     writeDatesAsTimestamps: false
 
-
-kafka:
-  embedded:
-    enabled: true
