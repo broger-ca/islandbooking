@@ -1,7 +1,26 @@
-## Setup 
-- Create a database on postgres ('booking') for dev default user config is booking/booking (check application.yaml, there is 2 connection to postgres define)
-- Start kafka on localhost ( kafka url define in application.yaml)
-- ./gradlew run  
+## Setup & Run
+The application needs :
+- a postgresql db with at least create table privilege 
+- a connection to kafka
+
+The default configuration is pointing to a  localhost postgres:5432, dbname : booking , user/password : booking/booking
+
+The default kafka configuration is pointing to localhost:9092
+
+then run the application using 
+```shell
+./gradlew run  
+```
+
+if you want to override parameters you can do 
+```shell
+./gradlew run -Dvertx.pg.client.uri=postgresql://booking:booking@localhost:5432/booking \
+ -Dflyway.datasources.default.url=jdbc:postgresql://localhost:5432/booking \
+ -Dflyway.datasources.default.username=booking \
+ -Dflyway.datasources.default.password=booking \
+ -Dkafka.bootstraps.servers=localhost:9092  
+```
+
 
 ## Postman 
 [postman collection](booking.postman_collection.json)

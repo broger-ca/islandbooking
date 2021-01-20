@@ -20,6 +20,10 @@ micronaut {
     }
 }
 
+run {
+    systemProperties System.properties
+}
+
 dependencies {
     annotationProcessor("org.projectlombok:lombok")
     annotationProcessor("io.micronaut.jaxrs:micronaut-jaxrs-processor")
