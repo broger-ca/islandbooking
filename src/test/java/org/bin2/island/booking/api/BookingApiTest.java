@@ -100,6 +100,11 @@ public class BookingApiTest extends BaseContainerTest {
         client.toBlocking().exchange(HttpRequest.DELETE(uri.toString()));
     }
 
+    private void doRefresh() {
+        URI uri = UriBuilder.of("/api/v1/booking/cacheRefresh").build();
+        client.toBlocking().exchange(HttpRequest.PUT(uri.toString(),""));
+    }
+
     private String doBooking(LocalDate from, LocalDate to) {
         URI uri = UriBuilder.of("/api/v1/booking/").build();
         BookingRequest request = BookingRequest.builder()
@@ -148,4 +153,26 @@ public class BookingApiTest extends BaseContainerTest {
         Assertions.assertEquals(1, results.stream().filter(s -> !"conflict".equals(s)).count());
     }
 
+    @Test
+    @Order(5)
+    public void testConcurrentRefresh() throws Exception {
+        LocalDate from = LocalDate.now().plus(20, ChronoUnit.DAYS);
+        LocalDate to = from.plus(2, ChronoUnit.DAYS);
+        // we check that the dates are available
+        checkThatDatesAreAvailable(from, to, 2);
+        int nbCalls = 40;
+        ExecutorService executor = Executors.newFixedThreadPool(nbCalls);
+        var results = Flowable.range(0, nbCalls).parallel(nbCalls).runOn(Schedulers.from(executor))
+                .map(i -> {
+                        if (i%2==1) {
+                            doRefresh();
+                        } else {
+                            // we check that the dates are available
+                            checkThatDatesAreAvailable(from, to, 2);
+                        }
+                        return Boolean.TRUE;
+                }).toSortedList(Comparator.naturalOrder()).blockingFirst();
+        executor.shutdown();
+        //        .map()
+    }
 }

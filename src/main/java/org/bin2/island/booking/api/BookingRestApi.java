@@ -135,9 +135,9 @@ public class BookingRestApi {
                 .build());
     }
 
-    @GET
+    @PUT
     @Path("/cacheRefresh")
-    public Response cancelBooking() {
+    public Response cacheRefresh() {
         bookingService.refreshCache();
         return Response.status(Response.Status.NO_CONTENT).build();
     }
